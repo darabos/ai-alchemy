@@ -1,0 +1,5 @@
+ctranslate2
+fastapi
+huggingface_hub
+transformers
+websocket-client

@@ -1,0 +1,118 @@
+<html>
+<script type="importmap">
+{ "imports": { "vue": "/vue.js" } }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Neuton:wght@400&display=swap');
+
+  html {
+    background: linear-gradient(to bottom, #fed, #abc);
+    font-family: 'Neuton', serif;
+  }
+  .card-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .card {
+    width: 200px;
+    height: 200px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    margin: 20px;
+    box-shadow: 0 5px 10px black;
+  }
+  .card img {
+    -webkit-user-drag: none;
+    width: 200px;
+    height: 200px;
+  }
+  .card .title {
+    position: absolute;
+    top: 70%;
+    left: 10%;
+    width: 80%;
+    text-wrap: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 28px;
+    /* font-weight: bold; */
+    color: white;
+    text-shadow: 0 0 4px black, 0 2px 4px black;
+  }
+</style>
+<div id="app"></div>
+<script type="module">
+  import { computed, createApp, ref, watch } from 'vue';
+  const app = createApp({
+    setup() {
+      const { data, error } = useFetch('/info');
+      const cards = ref([]);
+      watch(data, (newData) => {
+        if (newData) {
+          cards.value = newData.base_cards;
+        }
+      });
+      return {
+        info: data, error, cards,
+        async mergeCards({ a, b }) {
+          const res = await fetch(`/merge/${a}/${b}`)
+          const j = await res.json();
+          cards.value.push(j.merged);
+          data.value.merges[[a, b]] = j.merged;
+        },
+      };
+    },
+    template: `
+      <div class="card-list">
+        <p v-if="error">Error: {{ error }}</p>
+        <Card v-for="element in cards" :element="element" @merge-cards="mergeCards" />
+      </div>
+    `
+  });
+  app.component('Card', {
+    props: ['element'],
+    emits: ['merge-cards'],
+    setup(props, ctx) {
+      return {
+        title: props.element,
+        imageUrl: `/image/${props.element}`,
+          startDrag(evt, item) {
+          console.log(evt);
+          evt.target.style.visible = 'hidden';
+          evt.dataTransfer.dropEffect = 'link';
+          evt.dataTransfer.setData("text/plain", props.element);
+        },
+        onDrop(evt, list) {
+          evt.preventDefault();
+          const a = props.element;
+          const b = evt.dataTransfer.getData('text/plain');
+          ctx.emit('merge-cards', { a, b });
+        },
+      };
+    },
+    template: `
+      <div class="card"
+          @dragstart="startDrag"
+          @dragenter.prevent
+          @dragover.prevent
+          @drop="onDrop"
+          draggable="true">
+        <img :src="imageUrl" :title="title"><div class="title">{{ title }}</div>
+      </div>
+    `,
+  });
+  app.mount('#app');
+
+  function useFetch(url) {
+    const data = ref(null)
+    const error = ref(null)
+    fetch(url)
+    .then((res) => res.json())
+    .then((json) => (data.value = json))
+    .catch((err) => (error.value = err))
+    return { data, error }
+  }
+  </script>
+</html>
