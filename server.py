@@ -54,7 +54,7 @@ def generate(messages, max_length):
 
 
 def get_merge_result(a, b):
-    merges = {
+    example_merges = {
         ("Ice", "Fire"): "Water",
         ("Fire", "Water"): "Steam",
         ("Fire", "City"): "Fire station",
@@ -62,23 +62,26 @@ def get_merge_result(a, b):
         ("Human", "Stone"): "Dwarf",
     }
     messages = []
-    for xa, xb in merges:
+    for xa, xb in example_merges:
         messages.append(U(f"What do we get if we combine {xa} and {xb}?"))
-        messages.append(A(f"{merges[xa, xb]}."))
+        messages.append(A(f"{example_merges[xa, xb]}."))
     messages[0]["content"] = (
         "We are playing a game about merging things. " + messages[0]["content"]
     )
     messages.append(U(f"What do we get if we combine {a} and {b}?"))
 
+    meh = set()
+    not_new = set(merges.values())
     for i in range(10):
         g = generate(messages, max_length=20)
         if g.startswith("A "):
             g = g.removeprefix("A ").capitalize()
         if g.startswith("An "):
             g = g.removeprefix("An ").capitalize()
-        if len(g) < 15:
+        if len(g) < 15 and g not in not_new:
             return g
-    return "Nothing"
+        meh.add(g)
+    return meh.pop() if meh else "Nothing"
 
 
 def get_image_description(element):
@@ -163,6 +166,11 @@ unlocks = {
     "Passion": "Life",
     "Explosion": "Motion",
     "Pressure": "Time",
+    "Happiness": "Human",
+    "Death": "Stone",
+    "Firestorm": "Wasteland",
+    "Fish": "Diamond",
+    "God": "Magic",
 }
 
 
@@ -192,7 +200,7 @@ def get_merge(a, b):
         if x in unlocks and unlocks[x] not in base_cards:
             base_cards.append(unlocks[x])
         merges[(a, b)] = x
-    return {"merged": merges[(a, b)]}
+    return {"merged": merges[(a, b)], 'base_cards': base_cards}
 
 
 @app.post("/add_base/{x}")
