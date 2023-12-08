@@ -4,6 +4,7 @@ import huggingface_hub
 import json
 import os
 import random
+import sqlite3
 import starlette
 import transformers
 import urllib
@@ -56,11 +57,12 @@ def generate(messages, max_length):
 
 def get_merge_result(a, b):
     example_merges = {
-        ("Ice", "Fire"): "Water",
         ("Fire", "Water"): "Steam",
         ("Fire", "City"): "Fire station",
         ("Superman", "Batman"): "Superbatman",
         ("Human", "Stone"): "Dwarf",
+        ("Sea", "Life"): "Fish",
+        ("Blacksmith", "Metal"): "Axe",
     }
     messages = []
     for xa, xb in example_merges:
@@ -72,17 +74,17 @@ def get_merge_result(a, b):
     messages.append(U(f"What do we get if we combine {a} and {b}?"))
 
     meh = set()
-    not_new = set(merges.values())
+    not_new = set(get_merges().values())
     for i in range(10):
         g = generate(messages, max_length=20)
         if g.startswith("A "):
             g = g.removeprefix("A ").capitalize()
         if g.startswith("An "):
             g = g.removeprefix("An ").capitalize()
-        if len(g) < 15 and g not in not_new:
+        if len(g) < 15 and g not in not_new and ' and ' not in g.lower():
             return g
         meh.add(g)
-    return meh.pop() if meh else "Nothing"
+    return sorted(meh, key=lambda x: len(x))[0] if meh else "Nothing"
 
 
 def get_image_description(element):
@@ -161,18 +163,35 @@ class ComfyUI:
 comfy = ComfyUI()
 app = fastapi.FastAPI()
 
+
+db = sqlite3.connect("alchemy.db", check_same_thread=False)
+def init_db():
+    cur = db.cursor()
+    cur.execute("CREATE TABLE IF NOT EXISTS merges(a, b, makes)")
+    db.commit()
+def get_merges():
+    cur = db.cursor()
+    cur.execute("SELECT a, b, makes FROM merges")
+    return {(a, b): makes for (a, b, makes) in cur.fetchall()}
+init_db()
+
 base_cards = ["Water", "Fire"]
-merges = {}
 unlocks = {
     "Steam": "Love",
     "Passion": "Life",
     "Explosion": "Motion",
     "Pressure": "Time",
     "Happiness": "Human",
-    "Death": "Stone",
+    "Death": "Earth",
+    "Smoke": "Air",
     "Firestorm": "Wasteland",
     "Fish": "Diamond",
     "God": "Magic",
+    "Dragon": "Metal",
+    "Music": "City",
+    "Dog": "Friendship",
+    "Axe": "Wood",
+    "Phoenix": "Feather",
 }
 
 
@@ -189,20 +208,21 @@ def read_vue():
 @app.get("/info")
 def get_info():
     # JSON can't deal with tuple keys.
-    ms = {f"{a} + {b}": v for ((a, b), v) in merges.items()}
+    ms = {f"{a} + {b}": v for ((a, b), v) in get_merges().items()}
     return {"base_cards": base_cards, "merges": ms, "unlocks": unlocks}
 
 
 @app.get("/merge")
 def get_merge(a, b):
     [a, b] = sorted([a, b])
-    if (a, b) not in merges:
-        x = get_merge_result(a, b)
-        print(f"Merged {a} and {b} to get {x}")
-        if x in unlocks and unlocks[x] not in base_cards:
-            base_cards.append(unlocks[x])
-        merges[(a, b)] = x
-    return {"merged": merges[(a, b)], 'base_cards': base_cards}
+    cur = db.cursor()
+    merged = cur.execute("SELECT makes FROM merges WHERE a = ? AND b = ?", (a, b)).fetchone()
+    if not merged:
+        merged = get_merge_result(a, b)
+        print(f"Merged {a} and {b} to get {merged}")
+        cur.execute("INSERT INTO merges VALUES (?, ?, ?)", (a, b, merged))
+        db.commit()
+    return {"merged": merged}
 
 
 @app.post("/set_base")
@@ -213,10 +233,10 @@ def set_base(new_base_cards):
 
 
 @app.post("/forget")
-def forget(card):
-    for k in list(merges.keys()):
-        if card == merges[k]:
-            del merges[k]
+def forget(a, b, card):
+    cur = db.cursor()
+    cur.execute("DELETE FROM merges WHERE a = ? AND b = ? AND makes = ?", (a, b, card))
+    db.commit()
     return {"status": "ok"}
 
 
@@ -235,7 +255,7 @@ def image(x):
     imagefile = f"images/{x}.png"
     if not os.path.exists(imagefile):
         description = get_image_description(x)
-        imagedata = comfy.generate_image(description)
+        imagedata = comfy.generate_image(f"{x}: {description}")
         with open(imagefile, "wb") as f:
             f.write(imagedata)
     return starlette.responses.FileResponse(imagefile)
