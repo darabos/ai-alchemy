@@ -3,6 +3,7 @@ import fastapi
 import huggingface_hub
 import json
 import os
+import random
 import starlette
 import transformers
 import urllib
@@ -141,6 +142,7 @@ class ComfyUI:
         prompt["6"]["inputs"]["text"] = prompt["6"]["inputs"]["text"].replace(
             "SUBJECT", subject
         )
+        prompt["13"]["inputs"]["noise_seed"] = random.randint(0, 1000000)
         ws = websocket.WebSocket()
         ws.connect(f"ws://localhost:8188/ws?clientId={self.client_id}")
         prompt_id = self.queue_prompt(prompt)["prompt_id"]
@@ -191,7 +193,7 @@ def get_info():
     return {"base_cards": base_cards, "merges": ms, "unlocks": unlocks}
 
 
-@app.get("/merge/{a}/{b}")
+@app.get("/merge")
 def get_merge(a, b):
     [a, b] = sorted([a, b])
     if (a, b) not in merges:
@@ -203,15 +205,33 @@ def get_merge(a, b):
     return {"merged": merges[(a, b)], 'base_cards': base_cards}
 
 
-@app.post("/add_base/{x}")
-def add_base(x):
-    base_cards.append(x)
+@app.post("/set_base")
+def set_base(new_base_cards):
+    global base_cards
+    base_cards = new_base_cards
+    return {"status": "ok"}
+
+
+@app.post("/forget")
+def forget(card):
+    for k in list(merges.keys()):
+        if card == merges[k]:
+            del merges[k]
+    return {"status": "ok"}
+
+
+@app.post("/redraw")
+def redraw(card):
+    imagefile = f"images/{card}.png"
+    if os.path.exists(imagefile):
+        os.remove(imagefile)
     return {"status": "ok"}
 
 
 @app.get("/image/{x}")
 def image(x):
     os.makedirs("images", exist_ok=True)
+    # TODO: Normalize and sanitize x.
     imagefile = f"images/{x}.png"
     if not os.path.exists(imagefile):
         description = get_image_description(x)

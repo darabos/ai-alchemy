@@ -19,13 +19,42 @@
     inherits: false;
     initial-value: #fff;
   }
+  .card-slot {
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+    width: 200px;
+    height: 240px;
+    margin: 20px;
+    margin-top: 0;
+  }
+  .card-header {
+    color: #0008;
+    margin-bottom: 5px;
+    letter-spacing: 2;
+    display: flex;
+    justify-content: end;
+    align-items: end;
+  }
+  .card-origin {
+    flex: 1;
+  }
+  .card-slot .card-button {
+    visibility: hidden;
+  }
+  .card-slot:hover .card-button {
+    visibility: visible;
+  }
+  .card-button:hover {
+    cursor: pointer;
+    color: black;
+  }
   .card {
     width: 200px;
     height: 200px;
     position: relative;
     overflow: hidden;
     border-radius: 10px;
-    margin: 20px;
     transition: box-shadow 0.5s;
     background: radial-gradient(circle, var(--cycledColor), #0000 70%);
     animation: 1s infinite colorCycle;
@@ -77,6 +106,7 @@
   const app = createApp({
     setup() {
       const { data, error } = useFetch('/info');
+      const redraws = ref({});
       const cards = ref([]);
       watch(data, (newData) => {
         if (newData) {
@@ -84,62 +114,122 @@
         }
       });
       return {
-        info: data, error, cards,
+        info: data, error, cards, redraws,
         async mergeCards({ a, b }) {
-          const res = await fetch(`/merge/${a}/${b}`)
+          const res = await fetch(`/merge?a=${a}&b=${b}`)
           const j = await res.json();
-          cards.value.push(j.merged);
-          data.value.merges[[a, b]] = j.merged;
+          data.value.merges[a + ' + ' + b] = j.merged;
           for (const c of j.base_cards) {
             if (!cards.value.includes(c)) {
               cards.value.push(c);
             }
           }
         },
+        forgetCard(name) {
+          for (const k in data.value.merges) {
+            if (data.value.merges[k] === name) {
+              delete data.value.merges[k];
+            }
+          }
+          return fetch(`/forget?card=${name}`, { method: 'POST' });
+        },
+        async redrawCard(name) {
+          await fetch(`/redraw?card=${name}`, { method: 'POST' });
+          redraws.value[name] = (new Date()).getTime();
+        },
+        cards: computed(() => {
+          if (!data.value) return [];
+          const cards = [];
+          for (const k of data.value.base_cards) {
+            cards.push({
+              name: k,
+              origin: 'Fundamental',
+              key: k + cards.length,
+            });
+          }
+          for (const k in data.value.merges) {
+            cards.push({
+              name: data.value.merges[k],
+              origin: k,
+              key: k + cards.length,
+            });
+          }
+          return cards;
+        }),
       };
     },
     template: `
       <div class="card-list">
         <p v-if="error">Error: {{ error }}</p>
-        <Card v-for="element in cards" :element="element" @merge-cards="mergeCards" />
+        <Card
+          v-for="c in cards"
+          :key="c.key"
+          :card="c"
+          :redraw="redraws[c.name]"
+          @merge-cards="mergeCards"
+          @forget-card="forgetCard"
+          @redraw-card="redrawCard"
+        />
       </div>
     `
   });
   app.component('Card', {
-    props: ['element'],
-    emits: ['merge-cards'],
+    props: ['card', 'redraw'],
+    emits: ['merge-cards', 'forget-card', 'redraw-card'],
     setup(props, ctx) {
       const isLoaded = ref(false);
       return {
         isLoaded,
-        title: props.element,
-        imageUrl: `/image/${props.element}`,
-          startDrag(evt, item) {
+        title: props.card.name,
+        imageUrl: computed(() => {
+          console.log('imageUrl', props.card, props.redraw);
+          const base = `/image/${props.card.name}`;
+          if (props.redraw) {
+            return `${base}?${props.redraw}`;
+          }
+          return base;
+        }),
+        startDrag(evt, item) {
           evt.target.style.visible = 'hidden';
           evt.dataTransfer.dropEffect = 'link';
-          evt.dataTransfer.setData("text/plain", props.element);
+          evt.dataTransfer.setData("text/plain", props.card.name);
         },
         onDrop(evt, list) {
           evt.preventDefault();
-          const a = props.element;
+          const a = props.card.name;
           const b = evt.dataTransfer.getData('text/plain');
           ctx.emit('merge-cards', { a, b });
         },
         loaded() {
           isLoaded.value = true;
         },
+        forgetCard() {
+          ctx.emit('forget-card', props.card.name);
+        },
+        redrawCard() {
+          isLoaded.value = false;
+          ctx.emit('redraw-card', props.card.name);
+        },
       };
     },
     template: `
-      <div class="card"
-          :class="{ 'loaded': isLoaded }"
-          @dragstart="startDrag"
-          @dragenter.prevent
-          @dragover.prevent
-          @drop="onDrop"
-          draggable="true">
-        <img :src="imageUrl" :title="title" @load="loaded">
-        <div class="title">{{ title }}</div>
+      <div class="card-slot">
+        <div class="card-header">
+          <span class="card-origin">{{ card.origin }}</span>
+          <span class="card-button" title="Move to bottom" @click="moveCard">⇩</span>
+          <span class="card-button" title="Forget" @click="forgetCard">🗑</span>
+          <span class="card-button" title="Redraw" @click="redrawCard">✎</span>
+        </div>
+        <div class="card"
+            :class="{ 'loaded': isLoaded }"
+            @dragstart="startDrag"
+            @dragenter.prevent
+            @dragover.prevent
+            @drop="onDrop"
+            draggable="true">
+          <img :src="imageUrl" :title="title" @load="loaded">
+          <div class="title">{{ title }}</div>
+        </div>
       </div>
     `,
   });
