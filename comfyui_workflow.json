@@ -9,7 +9,7 @@
   },
   "6": {
     "inputs": {
-      "text": "very beautiful insanely detailed image of a\n\nSUBJECT\n\nby Victo Ngai, Oleksandra Ekster, Malevich, Vladyslav Yerko and Alexander Jansson, Vladyslav Yerko! Very Complex perfect elegant composition! linen gesso acrylic paper, epic Dramatic lighting! Razor-sharp quality insanely detailed, deep colors realistic masterpiece<lora:xl_more_art-full_v1:0.5>\n",
+      "text": "very beautiful insanely detailed image of a\n\nSUBJECT\n\nby Victo Ngai, Oleksandra Ekster, Malevich, Vladyslav Yerko and Alexander Jansson, Vladyslav Yerko! Very Complex perfect elegant composition! linen gesso acrylic paper, epic Dramatic lighting! Razor-sharp quality insanely detailed, deep colors realistic masterpiece\n",
       "clip": [
         "20",
         1
@@ -19,7 +19,7 @@
   },
   "7": {
     "inputs": {
-      "text": "<lora:badhands:1>ugly, tiling, poorly drawn hands, poorly drawn feet, poorly drawn face, out of frame, extra limbs, body out of frame, blurry, bad anatomy, blurred, watermark, grainy, signature, cut off, draft, closed eyes, text, logo",
+      "text": "ugly, tiling, poorly drawn hands, poorly drawn feet, poorly drawn face, out of frame, extra limbs, body out of frame, blurry, bad anatomy, blurred, watermark, grainy, signature, cut off, draft, closed eyes, text, logo",
       "clip": [
         "20",
         1
