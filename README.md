@@ -12,8 +12,7 @@ You need at least 12 GB GPU memory to run this.
 We use [ComfyUI](https://github.com/comfyanonymous/ComfyUI) for generating the images. Start it up.
 
 You can replace the ComfyUI workflow in `comfyui_workflow.json` if you want.
-As it is, it's [SDXL Turbo](https://stability.ai/news/stability-ai-sdxl-turbo)
-with the prompt from a [random image on Civitai](https://civitai.com/images/4027144).
+As it is, it's [SDXL Turbo](https://stability.ai/news/stability-ai-sdxl-turbo).
 
 ```
 pip install -r requirements.txt
@@ -36,7 +35,8 @@ My excuses are:
 - It was super easy. The models are public. The game was working before I had time to think about ethics.
 - There is no alternative for such a game. I could not have drawn millions of images for every possible combination.
 
-The prompt I copied for image generation lists the following artists:
+The prompt in `elemental.yml` is copied from a [random image on Civitai](https://civitai.com/images/4027144).
+It lists the following artists:
 - [Victo Ngai](https://victo-ngai.com/)
 - [Oleksandra Ekster](https://en.wikipedia.org/wiki/Aleksandra_Ekster)
 - [Kazimir Malevich](https://en.wikipedia.org/wiki/Kazimir_Malevich)
