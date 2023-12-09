@@ -3,7 +3,7 @@
 My kids love alchemy games, like Doodle God Universe, where you combine elements to make new elements.
 AI is great for this kind of game: every combination will produce something cool!
 
-![Screenshot](screenshot.jpg)
+![Screenshot](screenshots/elemental.jpg)
 
 ## How to run it
 
@@ -17,10 +17,12 @@ with the prompt from a [random image on Civitai](https://civitai.com/images/4027
 
 ```
 pip install -r requirements.txt
-./run.sh
+CONFIG=elemental.yml ./run.sh
 ```
 
-Then go to http://localhost:8000/ and start playing! You can change the initial cards in `server.py`.
+Then go to http://localhost:8000/ and start playing! You can change the rules and prompts in `configs/elemental.yml`.
+Or switch to a different game by using a different config file.
+(See [screenshots](https://github.com/darabos/ai-alchemy/tree/main/screenshots).)
 
 It uses an [optimized Mistral-7B-Instruct](https://huggingface.co/Praise2112/Mistral-7B-Instruct-v0.1-int8-ct2)
 model for generating the text.

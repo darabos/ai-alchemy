@@ -4,12 +4,14 @@ import huggingface_hub
 import json
 import os
 import random
+import re
 import sqlite3
 import starlette
 import transformers
 import urllib
 import uuid
 import websocket
+import yaml
 
 
 def U(x):
@@ -56,23 +58,15 @@ def generate(messages, max_length):
 
 
 def get_merge_result(a, b):
-    example_merges = {
-        ("Fire", "Water"): "Steam",
-        ("Fire", "City"): "Fire station",
-        ("Superman", "Batman"): "Superbatman",
-        ("Human", "Stone"): "Dwarf",
-        ("Sea", "Life"): "Fish",
-        ("Blacksmith", "Metal"): "Axe",
-    }
+    m = cfg["text"]["merge"]
     messages = []
-    for xa, xb in example_merges:
-        messages.append(U(f"What do we get if we combine {xa} and {xb}?"))
-        messages.append(A(f"{example_merges[xa, xb]}."))
-    messages[0]["content"] = (
-        "We are playing a game about merging things. " + messages[0]["content"]
-    )
-    messages.append(U(f"What do we get if we combine {a} and {b}?"))
-
+    for xa, xb, xc in m["examples"]:
+        messages.append(U(m["prompt"].replace("CARD1", xa).replace("CARD2", xb)))
+        messages.append(A(f"{xc}."))
+    messages[0]["content"] = m["prefix"] + " " + messages[0]["content"]
+    messages.append(U(m["prompt"].replace("CARD1", a).replace("CARD2", b)))
+    for x in messages:
+        print(x)
     meh = set()
     not_new = set(get_merges().values())
     for i in range(10):
@@ -81,7 +75,7 @@ def get_merge_result(a, b):
             g = g.removeprefix("A ").capitalize()
         if g.startswith("An "):
             g = g.removeprefix("An ").capitalize()
-        if len(g) < 15 and g not in not_new and ' and ' not in g.lower():
+        if len(g) < 15 and g not in not_new and " and " not in g.lower():
             return g
         meh.add(g)
     return sorted(meh, key=lambda x: len(x))[0] if meh else "Nothing"
@@ -89,13 +83,8 @@ def get_merge_result(a, b):
 
 def get_image_description(element):
     messages = [
-        U('How would you depict "Life" on a card in one sentence?'),
-        A("A radiant green heart."),
-        U('How would you depict "Fire" on a card in one sentence?'),
-        A("A flame."),
-        U('How would you depict "Deadly poison" on a card in one sentence?'),
-        A("A skull in a puddle of green liquid."),
-        U(f'How would you depict "{element}" on a card in one sentence?'),
+        U(p.replace("ELEMENT", element)) if i % 2 == 0 else A(p)
+        for i, p in enumerate(cfg["text"]["art"]["prompt"])
     ]
     return generate(messages, max_length=100)
 
@@ -141,9 +130,8 @@ class ComfyUI:
         print(f'generating image for "{subject}"')
         with open("comfyui_workflow.json") as f:
             prompt = json.loads(f.read())
-        prompt["6"]["inputs"]["text"] = prompt["6"]["inputs"]["text"].replace(
-            "SUBJECT", subject
-        )
+        prompt["6"]["inputs"]["text"] = cfg["art"]["prompt"].replace("SUBJECT", subject)
+        prompt["7"]["inputs"]["text"] = cfg["art"]["negative"]
         prompt["13"]["inputs"]["noise_seed"] = random.randint(0, 1000000)
         ws = websocket.WebSocket()
         ws.connect(f"ws://localhost:8188/ws?clientId={self.client_id}")
@@ -160,39 +148,41 @@ class ComfyUI:
                 return images[k][0]
 
 
-comfy = ComfyUI()
-app = fastapi.FastAPI()
-
-
-db = sqlite3.connect("alchemy.db", check_same_thread=False)
-def init_db():
+def open_db():
+    os.makedirs("db", exist_ok=True)
+    # If this is thread safe, that is by accident.
+    db = sqlite3.connect(f"db/{game_name}.db", check_same_thread=False)
     cur = db.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS merges(a, b, makes)")
     db.commit()
+    return db
+
+
+def load_config():
+    global cfg
+    with open(f'configs/{cfg_name}') as f:
+        cfg = yaml.safe_load(f)
+
+
+comfy = ComfyUI()
+app = fastapi.FastAPI()
+cfg_name = os.environ["CONFIG"]
+game_name = cfg_name.replace(".yml", "")
+load_config()
+db = open_db()
+load_model()  # Avoid accidentally loading it twice.
+
+
+@app.middleware("http")
+async def reload_config_on_request(request, call_next):
+    load_config()
+    return await call_next(request)
+
+
 def get_merges():
     cur = db.cursor()
     cur.execute("SELECT a, b, makes FROM merges")
     return {(a, b): makes for (a, b, makes) in cur.fetchall()}
-init_db()
-
-base_cards = ["Water", "Fire"]
-unlocks = {
-    "Steam": "Love",
-    "Passion": "Life",
-    "Explosion": "Motion",
-    "Pressure": "Time",
-    "Happiness": "Human",
-    "Death": "Earth",
-    "Smoke": "Air",
-    "Firestorm": "Wasteland",
-    "Fish": "Diamond",
-    "God": "Magic",
-    "Dragon": "Metal",
-    "Music": "City",
-    "Dog": "Friendship",
-    "Axe": "Wood",
-    "Phoenix": "Feather",
-}
 
 
 @app.get("/")
@@ -208,32 +198,33 @@ def read_vue():
 @app.get("/info")
 def get_info():
     # JSON can't deal with tuple keys.
-    ms = {f"{a} + {b}": v for ((a, b), v) in get_merges().items()}
-    return {"base_cards": base_cards, "merges": ms, "unlocks": unlocks}
+    merges = {f"{a} + {b}": v for ((a, b), v) in get_merges().items()}
+    return {
+        "base_cards": cfg["game"]["base_cards"],
+        "unlocks": cfg["game"]["unlocks"],
+        "merges": merges,
+    }
 
 
 @app.get("/merge")
 def get_merge(a, b):
     [a, b] = sorted([a, b])
     cur = db.cursor()
-    merged = cur.execute("SELECT makes FROM merges WHERE a = ? AND b = ?", (a, b)).fetchone()
-    if not merged:
-        merged = get_merge_result(a, b)
-        print(f"Merged {a} and {b} to get {merged}")
-        cur.execute("INSERT INTO merges VALUES (?, ?, ?)", (a, b, merged))
-        db.commit()
+    merged = cur.execute(
+        "SELECT makes FROM merges WHERE a = ? AND b = ?", (a, b)
+    ).fetchone()
+    if merged:
+        return {"merged": merged[0]}
+    merged = get_merge_result(a, b)
+    print(f"Merged {a} and {b} to get {merged}")
+    cur.execute("INSERT INTO merges VALUES (?, ?, ?)", (a, b, merged))
+    db.commit()
     return {"merged": merged}
-
-
-@app.post("/set_base")
-def set_base(new_base_cards):
-    global base_cards
-    base_cards = new_base_cards
-    return {"status": "ok"}
 
 
 @app.post("/forget")
 def forget(a, b, card):
+    [a, b] = sorted([a, b])
     cur = db.cursor()
     cur.execute("DELETE FROM merges WHERE a = ? AND b = ? AND makes = ?", (a, b, card))
     db.commit()
@@ -242,20 +233,26 @@ def forget(a, b, card):
 
 @app.post("/redraw")
 def redraw(card):
-    imagefile = f"images/{card}.png"
+    imagefile = get_imagefile(card)
     if os.path.exists(imagefile):
         os.remove(imagefile)
     return {"status": "ok"}
 
 
-@app.get("/image/{x}")
-def image(x):
-    os.makedirs("images", exist_ok=True)
-    # TODO: Normalize and sanitize x.
-    imagefile = f"images/{x}.png"
+def get_imagefile(card):
+    imgdir = "images/" + game_name
+    os.makedirs(imgdir, exist_ok=True)
+    card = re.sub("\W", "_", card.lower())
+    imagefile = f"{imgdir}/{card}.png"
+    return imagefile
+
+
+@app.get("/image/{card}")
+def image(card):
+    imagefile = get_imagefile(card)
     if not os.path.exists(imagefile):
-        description = get_image_description(x)
-        imagedata = comfy.generate_image(f"{x}: {description}")
+        description = get_image_description(card)
+        imagedata = comfy.generate_image(f"{card}: {description}")
         with open(imagefile, "wb") as f:
             f.write(imagedata)
     return starlette.responses.FileResponse(imagefile)

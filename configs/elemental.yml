@@ -1,0 +1,50 @@
+art:
+  prompt: >
+    very beautiful insanely detailed image of SUBJECT
+    by Victo Ngai, Oleksandra Ekster, Malevich, Vladyslav Yerko and Alexander Jansson!
+    Very Complex perfect elegant composition! linen gesso acrylic paper, epic Dramatic lighting!
+    Razor-sharp quality insanely detailed, deep colors realistic masterpiece
+  negative: >
+    ugly, tiling, poorly drawn hands, poorly drawn feet, poorly drawn face, out of frame,
+    extra limbs, body out of frame, blurry, bad anatomy, blurred, watermark, grainy, signature,
+    cut off, draft, closed eyes, text, logo
+game:
+  base_cards:
+    - Water
+    - Fire
+  unlocks:
+    Steam: Love
+    Passion: Life
+    Explosion: Motion
+    Pressure: Time
+    Happiness: Human
+    Death: Earth
+    Smoke: Air
+    Firestorm: Wasteland
+    Fish: Diamond
+    God: Magic
+    Dragon: Metal
+    Music: City
+    Dog: Friendship
+    Axe: Wood
+    Phoenix: Feather
+text:
+  merge:
+    prompt: What do we get if we combine CARD1 and CARD2?
+    prefix: We are playing a game about merging things.
+    examples:
+      - [Fire, Water, Steam]
+      - [Fire, City, Fire station]
+      - [Superman, Batman, Superbatman]
+      - [Human, Stone, Dwarf]
+      - [Sea, Life, Fish]
+      - [Blacksmith, Metal, Axe]
+  art:
+    prompt:
+      - How would you depict "Life" on a card in one sentence?
+      - A radiant green heart.
+      - How would you depict "Fire" on a card in one sentence?
+      - A flame.
+      - How would you depict "Deadly poison" on a card in one sentence?
+      - A skull in a puddle of green liquid.
+      - How would you depict ELEMENT on a card in one sentence?

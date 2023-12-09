@@ -1,0 +1,38 @@
+art:
+  prompt: >
+    very beautiful insanely detailed image of SUBJECT
+    cinematic film still, intricate details, dramatic lighting,
+     shallow depth of field, vignette, highly detailed, high budget, bokeh,
+     cinemascope, moody, epic, gorgeous, film grain, grainy
+  negative: >
+    ugly, tiling, poorly drawn hands, poorly drawn feet, poorly drawn face, out of frame,
+    extra limbs, body out of frame, blurry, bad anatomy, blurred, watermark, grainy, signature,
+    cut off, draft, closed eyes, text, logo
+game:
+  base_cards:
+    - Ms Scarlet
+    - Detective
+  unlocks:
+    Investigation: Mr Jones
+    Clue: Witness
+    Evidence: Suspect
+    Arrest: Court
+    Prison: Victory
+text:
+  merge:
+    prompt: What do we get if we combine CARD1 and CARD2?
+    prefix: We are playing a game about a detective solving a case.
+    examples:
+      - [Knife, Victim, Stabbing]
+      - [Secret, Witness, Blackmail]
+      - [Blood, Detective, Clue]
+      - [Mr Jones, Mr James, Enemies]
+  art:
+    prompt:
+      - How would you depict "Life" on a card in one sentence?
+      - A radiant green heart.
+      - How would you depict "Fire" on a card in one sentence?
+      - A flame.
+      - How would you depict "Deadly poison" on a card in one sentence?
+      - A skull in a puddle of green liquid.
+      - How would you depict ELEMENT on a card in one sentence?

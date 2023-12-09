@@ -1,0 +1,35 @@
+art:
+  prompt: >
+    anime character design, SUBJECT
+    (cute and fluffy animal:0.5), masterpiece, action shot, vivid lighting, 8k, colorful, expressive
+  negative: >
+    ugly, text, logo
+game:
+  base_cards:
+    - Peasant
+    - Training
+    - Stick
+    - Pebble
+  unlocks:
+    Fighter: Metal
+    Knight: Magic
+    Wizard: Gunpowder
+    Tank: Laser
+    Spaceship: Alien
+text:
+  merge:
+    prompt: What troop or item do we get if we combine CARD1 and CARD2?
+    prefix: We are playing a game about merging troops and items to get more advanced troops and items.
+    examples:
+      - [Civilian, Gun, Gunner]
+      - [Plasma, Tank, Plasma Cannon]
+      - [Metal, Magic, Mithril]
+  art:
+    prompt:
+      - How would you depict "Sword" in a JRPG?
+      - A plain sword held in a hand.
+      - How would you depict "Fire Sword" in a JRPG?
+      - A flaming blade with a radiant effect.
+      - How would you depict "Wizard" in a JRPG?
+      - A wizard with a staff and a robe. A lightning bolt is coming out of the staff.
+      - How would you depict ELEMENT in a JRPG?
