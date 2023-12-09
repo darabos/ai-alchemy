@@ -1,0 +1,31 @@
+art:
+  prompt: >
+    intricate details, high quality photograph, dramatic lighting, vignette,
+    SUBJECT
+  negative: >
+    cartoon, text, logo
+game:
+  base_cards:
+    - Oxygen
+    - Hydrogen
+  unlocks:
+    Water: Carbon
+    Propane: Nitrogen
+    Nitrous Oxide: Chlorine
+    Ammonia: Sodium
+text:
+  merge:
+    prompt: What do we get if we combine CARD1 and CARD2 in chemistry?
+    prefix: ''
+    examples:
+      - [Oxygen, Hydrogen, Water]
+      - [Methane, Carbon, Propane]
+      - [Nitrogen, Oxygen, Nitrous Oxide]
+      - [Water, Oxygen, Peroxide]
+  art:
+    prompt:
+      - How would you depict "Water" in a scientific illustration?
+      - All the Earth's oceans in a bottle.
+      - How would you depict "Methane" in a scientific illustration?
+      - An industrial pump extracting natural gas from the ground.
+      - How would you depict "ELEMENT" in a scientific illustration?

@@ -1,0 +1,32 @@
+art:
+  prompt: >
+    cinematic photograph, kawaii, demure, curious, cinemascope, bokeh,
+    cute creature, SUBJECT
+  negative: >
+    text, logo
+game:
+  base_cards:
+    - Worm
+    - Spider
+  unlocks:
+    Centipede: Mouse
+    Mole: Cat
+    Scorpion: Chicken
+    Chimera: Octopus
+    Monkey: Snail
+    Sloth: Ladybug
+text:
+  merge:
+    prompt: What do we get if we hybridize CARD1 and CARD2?
+    prefix: ''
+    examples:
+      - [Worm, Spider, Centipede]
+      - [Dog, Sausage, Dachshund]
+      - [Cat, Zebra, Tiger]
+  art:
+    prompt:
+      - What does a "Tiger" look like?
+      - A feline predator with black stripes.
+      - What does a "Phoenix" look like?
+      - A bird with red feathers emerging from a fire.
+      - What does a "ELEMENT" look like?
