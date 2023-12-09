@@ -92,7 +92,6 @@ def get_image_description(element):
 class ComfyUI:
     def __init__(self):
         self.server = "http://127.0.0.1:8188/"
-        self.client_id = str(uuid.uuid4())
 
     def get_history(self, prompt_id):
         with urllib.request.urlopen(f"{self.server}history/{prompt_id}") as response:
@@ -105,8 +104,8 @@ class ComfyUI:
         with urllib.request.urlopen(f"{self.server}view?{url_values}") as response:
             return response.read()
 
-    def queue_prompt(self, prompt):
-        p = {"prompt": prompt, "client_id": self.client_id}
+    def queue_prompt(self, prompt, client_id):
+        p = {"prompt": prompt, "client_id": client_id}
         data = json.dumps(p).encode("utf-8")
         req = urllib.request.Request(self.server + "prompt", data=data)
         return json.loads(urllib.request.urlopen(req).read())
@@ -130,12 +129,13 @@ class ComfyUI:
         print(f'generating image for "{subject}"')
         with open("comfyui_workflow.json") as f:
             prompt = json.loads(f.read())
+        client_id = str(uuid.uuid4())
         prompt["6"]["inputs"]["text"] = cfg["art"]["prompt"].replace("SUBJECT", subject)
         prompt["7"]["inputs"]["text"] = cfg["art"]["negative"]
         prompt["13"]["inputs"]["noise_seed"] = random.randint(0, 1000000)
         ws = websocket.WebSocket()
-        ws.connect(f"ws://localhost:8188/ws?clientId={self.client_id}")
-        prompt_id = self.queue_prompt(prompt)["prompt_id"]
+        ws.connect(f"ws://localhost:8188/ws?clientId={client_id}")
+        prompt_id = self.queue_prompt(prompt, client_id)["prompt_id"]
         while True:
             out = ws.recv()
             history = self.get_history(prompt_id)
