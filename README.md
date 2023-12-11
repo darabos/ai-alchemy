@@ -16,12 +16,12 @@ As it is, it's [SDXL Turbo](https://stability.ai/news/stability-ai-sdxl-turbo).
 
 ```
 pip install -r requirements.txt
-CONFIG=elemental.yml ./run.sh
+uvicorn server:app --reload
 ```
 
-Then go to http://localhost:8000/ and start playing! You can change the rules and prompts in `configs/elemental.yml`.
-Or switch to a different game by using a different config file.
-(See [screenshots](https://github.com/darabos/ai-alchemy/tree/main/screenshots).)
+Then go to http://localhost:8000/ and start playing! You can change the rules and prompts in
+the files in `configs`. Or add your own!
+(See [screenshots](https://github.com/darabos/ai-alchemy/tree/main/screenshots) for some variants.)
 
 It uses an [optimized Mistral-7B-Instruct](https://huggingface.co/Praise2112/Mistral-7B-Instruct-v0.1-int8-ct2)
 model for generating the text.

@@ -9,8 +9,12 @@
     background: linear-gradient(to bottom, #fed, #abc);
     font-family: 'Neuton', serif;
   }
+  body {
+    margin: 0;
+  }
   .footer {
-    margin-top: 50px;
+    margin: 50px;
+    margin-bottom: 20px;
   }
   .card-list {
     display: flex;
@@ -31,11 +35,12 @@
     margin: 20px;
     margin-top: 0;
   }
+  .message,
   .footer,
   .card-header {
     color: #0008;
     letter-spacing: 2;
-    font-size: 12px;
+    font-size: 15px;
   }
   .card-header {
     margin-bottom: 5px;
@@ -96,6 +101,7 @@
   .card .title {
     position: absolute;
     bottom: 10%;
+    line-height: 28px;
     left: 10%;
     width: 80%;
     overflow: hidden;
@@ -108,18 +114,66 @@
   .unlock-hint {
     margin: 5px;
   }
+  .header {
+    display: flex;
+    justify-content: center;
+    background: #433;
+    color: #fff8;
+    letter-spacing: 2;
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+  .variant {
+    margin: 0 10px;
+    padding: 5px;
+    cursor: pointer;
+  }
+  .variant.selected {
+    color: #fff;
+    background: #f008;
+  }
+  .message {
+    text-align: center;
+  }
 </style>
 <div id="app"></div>
 <script type="module">
   import { computed, createApp, ref, watch } from 'vue';
   const app = createApp({
-    setup() {
+    setup(props) {
       const { data, error } = useFetch('/info');
+      const variant = ref(null);
+      return {
+        error, variant,
+        variants: computed(() => {
+          if (!data.value) return;
+          data.value.variants.sort();
+          return data.value.variants;
+        }),
+      };
+    },
+    template: `
+      <div class="header">
+        <span
+          v-for="v in variants"
+          class="variant"
+          :class="{ 'selected': v === variant }"
+          @click="variant = v">{{v}}</span>
+      </div>
+      <p class="message" v-if="error">Error: {{ error }}</p>
+      <p class="message" v-if="!variant">Choose a variant.</p>
+      <Game v-if="variant" :variant="variant" :key="variant" />
+    `,
+  });
+  app.component('Game', {
+    props: ['variant'],
+    setup(props) {
+      const { data, error } = useFetch(`/${props.variant}/info`);
       const redraws = ref({});
       const that = {
-        info: data, error, redraws,
+        info: data, error, redraws, variant: props.variant,
         async mergeCards({ a, b }) {
-          const res = await fetch(`/merge?a=${a}&b=${b}`)
+          const res = await fetch(`/${props.variant}/merge?a=${a}&b=${b}`)
           const j = await res.json();
           data.value.merges[a + ' + ' + b] = j.merged;
         },
@@ -130,7 +184,8 @@
             }
           }
           const [a, b] = card.origin.split(' + ');
-          return fetch('/forget?' + new URLSearchParams({a, b, card: card.name}), { method: 'POST' });
+          const params = new URLSearchParams({a, b, card: card.name});
+          return fetch(`/${props.variant}/forget?${params}`, { method: 'POST' });
         },
         async rerollCard(card) {
           const [a, b] = card.origin.split(' + ');
@@ -138,7 +193,7 @@
           await that.mergeCards({ a, b });
         },
         async redrawCard(card) {
-          await fetch(`/redraw?card=${card.name}`, { method: 'POST' });
+          await fetch(`/${props.variant}/redraw?card=${card.name}`, { method: 'POST' });
           redraws.value[card.name] = (new Date()).getTime();
         },
         cards: computed(() => {
@@ -187,6 +242,7 @@
           v-for="c in cards"
           :key="c.key"
           :card="c"
+          :variant="variant"
           :redraw="redraws[c.name]"
           @merge-cards="mergeCards"
           @forget-card="forgetCard"
@@ -200,7 +256,7 @@
     `
   });
   app.component('Card', {
-    props: ['card', 'redraw'],
+    props: ['card', 'redraw', 'variant'],
     emits: ['merge-cards', 'forget-card', 'redraw-card', 'reroll-card'],
     setup(props, ctx) {
       const isLoaded = ref(false);
@@ -208,7 +264,7 @@
         isLoaded,
         title: props.card.name,
         imageUrl: computed(() => {
-          const base = `/image/${props.card.name}`;
+          const base = `/${props.variant}/image/${props.card.name}`;
           if (props.redraw) {
             return `${base}?${props.redraw}`;
           }

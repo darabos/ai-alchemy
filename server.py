@@ -57,7 +57,8 @@ def generate(messages, max_length):
     return decoded
 
 
-def get_merge_result(a, b):
+def get_merge_result(cfg, a, b):
+    db = get_db(cfg)
     m = cfg["text"]["merge"]
     messages = []
     for xa, xb, xc in m["examples"]:
@@ -68,7 +69,7 @@ def get_merge_result(a, b):
     for x in messages:
         print(x)
     meh = set()
-    not_new = set(get_merges().values())
+    not_new = set(get_merges(db).values())
     for i in range(10):
         g = generate(messages, max_length=20)
         if g.startswith("A "):
@@ -81,7 +82,7 @@ def get_merge_result(a, b):
     return sorted(meh, key=lambda x: len(x))[0] if meh else "Nothing"
 
 
-def get_image_description(element):
+def get_image_description(cfg, element):
     messages = [
         U(p.replace("ELEMENT", element)) if i % 2 == 0 else A(p)
         for i, p in enumerate(cfg["text"]["art"]["prompt"])
@@ -125,7 +126,7 @@ class ComfyUI:
                 output_images[node_id] = images_output
         return output_images
 
-    def generate_image(self, subject):
+    def generate_image(self, cfg, subject):
         print(f'generating image for "{subject}"')
         with open("comfyui_workflow.json") as f:
             prompt = json.loads(f.read())
@@ -148,38 +149,36 @@ class ComfyUI:
                 return images[k][0]
 
 
-def open_db():
+def open_db(variant_name):
     os.makedirs("db", exist_ok=True)
     # If this is thread safe, that is by accident.
-    db = sqlite3.connect(f"db/{game_name}.db", check_same_thread=False)
+    db = sqlite3.connect(f"db/{variant_name}.db", check_same_thread=False)
     cur = db.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS merges(a, b, makes)")
     db.commit()
     return db
 
 
-def load_config():
-    global cfg
-    with open(f'configs/{cfg_name}') as f:
+def get_config(variant):
+    with open(f"configs/{variant}.yml") as f:
         cfg = yaml.safe_load(f)
+        cfg["variant_name"] = variant
+        return cfg
 
 
 comfy = ComfyUI()
 app = fastapi.FastAPI()
-cfg_name = os.environ["CONFIG"]
-game_name = cfg_name.replace(".yml", "")
-load_config()
-db = open_db()
 load_model()  # Avoid accidentally loading it twice.
+dbs = {}
 
 
-@app.middleware("http")
-async def reload_config_on_request(request, call_next):
-    load_config()
-    return await call_next(request)
+def get_db(cfg):
+    if cfg["variant_name"] not in dbs:
+        dbs[cfg["variant_name"]] = open_db(cfg["variant_name"])
+    return dbs[cfg["variant_name"]]
 
 
-def get_merges():
+def get_merges(db):
     cur = db.cursor()
     cur.execute("SELECT a, b, makes FROM merges")
     return {(a, b): makes for (a, b, makes) in cur.fetchall()}
@@ -197,8 +196,17 @@ def read_vue():
 
 @app.get("/info")
 def get_info():
+    return {
+        "variants": [variant.removesuffix(".yml") for variant in os.listdir("configs")]
+    }
+
+
+@app.get("/{variant}/info")
+def get_variant_info(variant):
+    cfg = get_config(variant)
+    db = get_db(cfg)
     # JSON can't deal with tuple keys.
-    merges = {f"{a} + {b}": v for ((a, b), v) in get_merges().items()}
+    merges = {f"{a} + {b}": v for ((a, b), v) in get_merges(db).items()}
     return {
         "base_cards": cfg["game"]["base_cards"],
         "unlocks": cfg["game"]["unlocks"],
@@ -206,8 +214,10 @@ def get_info():
     }
 
 
-@app.get("/merge")
-def get_merge(a, b):
+@app.get("/{variant}/merge")
+def get_merge(variant, a, b):
+    cfg = get_config(variant)
+    db = get_db(cfg)
     [a, b] = sorted([a, b])
     cur = db.cursor()
     merged = cur.execute(
@@ -215,15 +225,17 @@ def get_merge(a, b):
     ).fetchone()
     if merged:
         return {"merged": merged[0]}
-    merged = get_merge_result(a, b)
+    merged = get_merge_result(cfg, a, b)
     print(f"Merged {a} and {b} to get {merged}")
     cur.execute("INSERT INTO merges VALUES (?, ?, ?)", (a, b, merged))
     db.commit()
     return {"merged": merged}
 
 
-@app.post("/forget")
-def forget(a, b, card):
+@app.post("/{variant}/forget")
+def forget(variant, a, b, card):
+    cfg = get_config(variant)
+    db = get_db(cfg)
     [a, b] = sorted([a, b])
     cur = db.cursor()
     cur.execute("DELETE FROM merges WHERE a = ? AND b = ? AND makes = ?", (a, b, card))
@@ -231,28 +243,30 @@ def forget(a, b, card):
     return {"status": "ok"}
 
 
-@app.post("/redraw")
-def redraw(card):
-    imagefile = get_imagefile(card)
+@app.post("/{variant}/redraw")
+def redraw(variant, card):
+    cfg = get_config(variant)
+    imagefile = get_imagefile(cfg, card)
     if os.path.exists(imagefile):
         os.remove(imagefile)
     return {"status": "ok"}
 
 
-def get_imagefile(card):
-    imgdir = "images/" + game_name
+def get_imagefile(cfg, card):
+    imgdir = "images/" + cfg["variant_name"]
     os.makedirs(imgdir, exist_ok=True)
     card = re.sub("\W", "_", card.lower())
     imagefile = f"{imgdir}/{card}.png"
     return imagefile
 
 
-@app.get("/image/{card}")
-def image(card):
-    imagefile = get_imagefile(card)
+@app.get("/{variant}/image/{card}")
+def image(variant, card):
+    cfg = get_config(variant)
+    imagefile = get_imagefile(cfg, card)
     if not os.path.exists(imagefile):
-        description = get_image_description(card)
-        imagedata = comfy.generate_image(f"{card}: {description}")
+        description = get_image_description(cfg, card)
+        imagedata = comfy.generate_image(cfg, f"{card}: {description}")
         with open(imagefile, "wb") as f:
             f.write(imagedata)
     return starlette.responses.FileResponse(imagefile)
