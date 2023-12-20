@@ -15,6 +15,10 @@
   .footer {
     margin: 50px;
     margin-bottom: 20px;
+    display: flex;
+  }
+  .footer div {
+    flex: 1;
   }
   .card-list {
     display: flex;
@@ -143,6 +147,10 @@
     setup(props) {
       const { data, error } = useFetch('/info');
       const variant = ref(null);
+      variant.value = localStorage.getItem('variant') || 'elemental';
+      watch(variant, (v) => {
+        localStorage.setItem('variant', v);
+      });
       return {
         error, variant,
         variants: computed(() => {
@@ -170,19 +178,31 @@
     setup(props) {
       const { data, error } = useFetch(`/${props.variant}/info`);
       const redraws = ref({});
+      const merges = ref({});
+      merges.value = JSON.parse(localStorage.getItem(`merges for ${props.variant}`) || '{}');
+      function saveMerges() {
+        localStorage.setItem(`merges for ${props.variant}`, JSON.stringify(merges.value));
+      }
       const that = {
         info: data, error, redraws, variant: props.variant,
         async mergeCards({ a, b }) {
           const res = await fetch(`/${props.variant}/merge?a=${a}&b=${b}`)
           const j = await res.json();
-          data.value.merges[a + ' + ' + b] = j.merged;
+          merges.value[a + ' + ' + b] = j.merged;
+          saveMerges();
+        },
+        startOver() {
+          localStorage.removeItem(`merges for ${props.variant}`);
+          merges.value = {};
+          redraws.value = {};
         },
         forgetCard(card) {
-          for (const k in data.value.merges) {
+          for (const k in merges.value) {
             if (k === card.origin) {
-              delete data.value.merges[k];
+              delete merges.value[k];
             }
           }
+          saveMerges();
           const [a, b] = card.origin.split(' + ');
           const params = new URLSearchParams({a, b, card: card.name});
           return fetch(`/${props.variant}/forget?${params}`, { method: 'POST' });
@@ -206,8 +226,8 @@
               key: k + cards.length,
             });
           }
-          for (const k in data.value.merges) {
-            const name = data.value.merges[k];
+          for (const k in merges.value) {
+            const name = merges.value[k];
             cards.push({
               name,
               origin: k,
@@ -227,7 +247,7 @@
         unmetUnlocks: computed(() => {
           if (!data.value) return [];
           const generated = {};
-          for (const c of Object.values(data.value.merges)) {
+          for (const c of Object.values(merges.value)) {
             generated[c] = true;
           }
           return Object.keys(data.value.unlocks).filter((k) => !generated[k]);
@@ -251,7 +271,8 @@
         />
       </div>
       <div class="footer">
-        Remaining unlocks: <span class="unlock-hint" v-for="u in unmetUnlocks">{{ u }}</span>
+        <div>Remaining unlocks: <span class="unlock-hint" v-for="u in unmetUnlocks">{{ u }}</span></div>
+        <button @click="startOver" class="unlock-hint" style="cursor: pointer">Start over</button>
       </div>
     `
   });

@@ -215,7 +215,7 @@ def get_variant_info(variant):
 
 
 @app.get("/{variant}/merge")
-def get_merge(variant, a, b):
+def get_merge(variant, a, b, store=False):
     cfg = get_config(variant)
     db = get_db(cfg)
     [a, b] = sorted([a, b])
@@ -227,8 +227,9 @@ def get_merge(variant, a, b):
         return {"merged": merged[0]}
     merged = get_merge_result(cfg, a, b)
     print(f"Merged {a} and {b} to get {merged}")
-    cur.execute("INSERT INTO merges VALUES (?, ?, ?)", (a, b, merged))
-    db.commit()
+    if store:
+        cur.execute("INSERT INTO merges VALUES (?, ?, ?)", (a, b, merged))
+        db.commit()
     return {"merged": merged}
 
 
