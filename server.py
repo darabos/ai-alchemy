@@ -29,11 +29,11 @@ def load_model():
     global model_cache
     if model_cache is None:
         model_dir = huggingface_hub.snapshot_download(
-            repo_id="Praise2112/Mistral-7B-Instruct-v0.1-int8-ct2"
+            repo_id="jncraton/Mistral-7B-Instruct-v0.2-ct2-int8"
         )
         generator = ctranslate2.Generator(model_dir, device="cuda", compute_type="int8")
         tokenizer = transformers.AutoTokenizer.from_pretrained(
-            "mistralai/Mistral-7B-Instruct-v0.1"
+            "jncraton/Mistral-7B-Instruct-v0.2-ct2-int8"
         )
         model_cache = generator, tokenizer
     return model_cache
@@ -256,7 +256,7 @@ def redraw(variant, card):
 def get_imagefile(cfg, card):
     imgdir = "images/" + cfg["variant_name"]
     os.makedirs(imgdir, exist_ok=True)
-    card = re.sub("\W", "_", card.lower())
+    card = re.sub(r"\W", "_", card.lower())
     imagefile = f"{imgdir}/{card}.png"
     return imagefile
 
