@@ -23,7 +23,7 @@ Then go to http://localhost:8000/ and start playing! You can change the rules an
 the files in `configs`. Or add your own!
 (See [screenshots](https://github.com/darabos/ai-alchemy/tree/main/screenshots) for some variants.)
 
-It uses an [optimized Mistral-7B-Instruct](https://huggingface.co/Praise2112/Mistral-7B-Instruct-v0.1-int8-ct2)
+It uses an [optimized Mistral-7B-Instruct](https://huggingface.co/jncraton/Mistral-7B-Instruct-v0.2-ct2-int8)
 model for generating the text.
 
 ## Is AI art okay?
